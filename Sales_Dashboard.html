@@ -23,7 +23,7 @@
  --orange: #ff9f43;
  --blue: #54a0ff;
  --purple: #a29bfe;
- --sidebar-w: 230px;
+ --sidebar-w: 175px;
  }
  * { margin:0; padding:0; box-sizing:border-box; }
  body { font-family:'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; overflow-x:hidden; }
@@ -520,6 +520,70 @@
  </div>
  </div>
 
+ <!-- Order Frequency Chart -->
+ <div class="chart-grid chart-grid-2-1">
+ <div class="chart-card">
+ <div class="chart-header">
+ <div>
+ <div class="chart-title">Top Customers by Order Frequency</div>
+ <div class="chart-sub">Number of orders placed per customer (top 15)</div>
+ </div>
+ <div class="chart-actions">
+ <button class="chip active" onclick="setFreqView('orders',this)">Orders</button>
+ <button class="chip" onclick="setFreqView('aov',this)">Avg Order Value</button>
+ </div>
+ </div>
+ <div class="chart-wrap" style="height:300px"><canvas id="freqChart"></canvas></div>
+ </div>
+ <div class="chart-card">
+ <div class="chart-header">
+ <div>
+ <div class="chart-title">Orders vs Revenue</div>
+ <div class="chart-sub">Frequency vs total revenue (top 10)</div>
+ </div>
+ </div>
+ <div class="chart-wrap" style="height:300px"><canvas id="freqRevenueChart"></canvas></div>
+ </div>
+ </div>
+
+ <!-- Order Frequency Table -->
+ <div class="table-card">
+ <div class="table-head">
+ <span class="table-title">Top Customers by Order Frequency</span>
+ <input type="text" class="search-box" placeholder="Search customers..." oninput="filterFreqTable(this.value)"/>
+ </div>
+ <table>
+ <thead><tr>
+ <th>#</th>
+ <th>Customer</th>
+ <th>Orders</th>
+ <th>Total Revenue (GHS)</th>
+ <th>Avg Order Value (GHS)</th>
+ <th>Order Share</th>
+ </tr></thead>
+ <tbody id="freqTableBody"></tbody>
+ </table>
+ </div>
+
+ <!-- Outstanding Balances Table -->
+ <div class="table-card">
+ <div class="table-head">
+ <span class="table-title">Customers with Outstanding Balances</span>
+ <input type="text" class="search-box" placeholder="Search customers..." oninput="filterOutstanding(this.value)"/>
+ </div>
+ <table>
+ <thead><tr>
+ <th>#</th>
+ <th>Customer</th>
+ <th>Invoice (GHS)</th>
+ <th>Collected (GHS)</th>
+ <th>Outstanding (GHS)</th>
+ <th>Collection Rate</th>
+ </tr></thead>
+ <tbody id="outstandingTableBody"></tbody>
+ </table>
+ </div>
+
  <!-- =================== PAGE: PAYMENTS =================== -->
  <div class="page" id="page-payments">
  <div class="page-header">
@@ -695,6 +759,66 @@ const DATA = {
  values: [59,9,7,6,1]
  },
  delivType: { labels: ['Farmer','Agrovet'], values: [68,11] },
+  freqTable: [
+    {name:'Razz Asaana Ent',orders:74,revenue:89260,aov:1206,last:'28 Apr 2026'},
+    {name:'Good God Pet Shop',orders:19,revenue:43657,aov:2298,last:'16 Apr 2026'},
+    {name:'Samnart G&M Vet Drugs',orders:13,revenue:5135,aov:395,last:'22 Apr 2026'},
+    {name:'Animal Maniak',orders:12,revenue:39335,aov:3278,last:'22 Apr 2026'},
+    {name:'247 WillyRose Ent.',orders:11,revenue:29540,aov:2685,last:'21 Apr 2026'},
+    {name:'Birikwart Ventures',orders:11,revenue:207660,aov:18878,last:'20 Apr 2026'},
+    {name:'Lowelem Veterinary Service',orders:11,revenue:45068,aov:4097,last:'28 Apr 2026'},
+    {name:'Tafo Veterinary Service',orders:9,revenue:55150,aov:6128,last:'28 Apr 2026'},
+    {name:'Alex Farms',orders:9,revenue:38525,aov:4281,last:'28 Apr 2026'},
+    {name:'Grateful Heart Farms',orders:9,revenue:81800,aov:9089,last:'21 Apr 2026'},
+    {name:'Nkawkaw Veterinary Clinic',orders:8,revenue:36330,aov:4541,last:'27 Apr 2026'},
+    {name:'Emevet Ventures',orders:8,revenue:109455,aov:13682,last:'28 Apr 2026'},
+    {name:'Ho Veterinary Service',orders:8,revenue:89319,aov:11165,last:'28 Apr 2026'},
+    {name:'Finger of God Enterprise',orders:7,revenue:44077,aov:6297,last:'17 Apr 2026'},
+    {name:'KG Vet Services',orders:7,revenue:33295,aov:4756,last:'28 Apr 2026'},
+    {name:'Maxvet Ventures',orders:6,revenue:123995,aov:20666,last:'10 Apr 2026'},
+    {name:'Be Just Enterprise',orders:6,revenue:35685,aov:5948,last:'15 Apr 2026'},
+    {name:'Shamo Farms and Trading',orders:5,revenue:157090.5,aov:31418,last:'20 Apr 2026'},
+    {name:'Vetshop Ventures',orders:4,revenue:137420,aov:34355,last:'22 Apr 2026'},
+    {name:'Welcome Complex Trading',orders:4,revenue:43225,aov:10806,last:'13 Apr 2026'}
+  ],
+  outstandingTable: [
+    {name:'Birikwart Ventures',invoice:207660,collected:91250,outstanding:116410,rate:43.9},
+    {name:'Shamo Farms and Trading Ent',invoice:157090.5,collected:78992,outstanding:78098.5,rate:50.3},
+    {name:'Barima Bama Vet Shop',invoice:98280,collected:29780,outstanding:68500,rate:30.3},
+    {name:'Ho Veterinary Service',invoice:89319,collected:33839,outstanding:55480,rate:37.9},
+    {name:'Emevet Ventures',invoice:109455,collected:54700,outstanding:54755,rate:50.0},
+    {name:'Grateful Heart Farms',invoice:81800,collected:35750,outstanding:46050,rate:43.7},
+    {name:'Eddy Janco Enterprise',invoice:60500,collected:15950,outstanding:44550,rate:26.4},
+    {name:'Good God Pet Shop',invoice:43657,collected:0,outstanding:43657,rate:0.0},
+    {name:'Maxvet Ventures',invoice:123995,collected:80920,outstanding:43075,rate:65.3},
+    {name:'Konodia Veterinary',invoice:89575,collected:47225,outstanding:42350,rate:52.7},
+    {name:'Alphadique Farms',invoice:43650,collected:5432,outstanding:38218,rate:12.4},
+    {name:'Addvet Solutions',invoice:71650,collected:40000,outstanding:31650,rate:55.8},
+    {name:'Veterinary Drug House',invoice:30000,collected:0,outstanding:30000,rate:0.0},
+    {name:'Razz Asaana Ent',invoice:89260,collected:59610,outstanding:29650,rate:66.8},
+    {name:'Vetshop Ventures',invoice:137420,collected:112740,outstanding:24680,rate:82.0},
+    {name:'Finger of God Enterprise',invoice:44077,collected:20510,outstanding:23567,rate:46.5},
+    {name:'Lowelem Veterinary Service',invoice:45068,collected:22483,outstanding:22585,rate:49.9},
+    {name:'Tafo Veterinary Service',invoice:55150,collected:33500,outstanding:21650,rate:60.7},
+    {name:'Yaks Agrovet Limited',invoice:30780,collected:9750,outstanding:21030,rate:31.7},
+    {name:'Vic K Ventures',invoice:18530,collected:0,outstanding:18530,rate:0.0},
+    {name:'Welcome Complex Trading',invoice:43225,collected:25935,outstanding:17290,rate:60.0},
+    {name:'Animal Maniak',invoice:39335,collected:22650,outstanding:16685,rate:57.6},
+    {name:'KG Vet Services',invoice:33295,collected:17520,outstanding:15775,rate:52.6},
+    {name:'Alex Farms',invoice:32225,collected:19885,outstanding:12340,rate:61.7},
+    {name:'Charlotte Vet',invoice:19940,collected:9160,outstanding:10780,rate:45.9},
+    {name:'Nkawkaw Veterinary Clinic',invoice:36330,collected:26000,outstanding:10330,rate:71.6},
+    {name:'AAE37 Enterprise',invoice:19770,collected:10645,outstanding:9125,rate:53.8},
+    {name:'Be Just Enterprise',invoice:35685,collected:27705,outstanding:7980,rate:77.6},
+    {name:'247 WillyRose Ent.',invoice:29540,collected:21880,outstanding:7660,rate:74.1},
+    {name:'Vic Jeaf Enterprise',invoice:6300,collected:0,outstanding:6300,rate:0.0},
+    {name:'Danjima Ventures',invoice:4780,collected:380,outstanding:4400,rate:7.9},
+    {name:'Super Vet',invoice:7575,collected:5385,outstanding:2190,rate:71.1},
+    {name:'Samnart G&M Vet Drugs',invoice:5135,collected:3645,outstanding:1490,rate:71.0},
+    {name:'Righteous Life Ent.',invoice:2575,collected:1320,outstanding:1255,rate:51.3},
+    {name:'Capital Vet Enterprise',invoice:5895,collected:5165,outstanding:730,rate:87.6},
+    {name:'Akhlaq Veterinary Pharmacy',invoice:608,collected:0,outstanding:608,rate:0.0}
+  ],
  custTable: [
  {name:'Birikwart Ventures',region:'Ashanti',status:'Active',purchases:11,revenue:207660,expected:622980},
  {name:'Shamo Farms & Trading',region:'Ashanti',status:'Active',purchases:5,revenue:157090.5,expected:471271.5},
@@ -1014,6 +1138,107 @@ function filterCustomers(q) {
  }).join('');
 }
 
+// --- ORDER FREQUENCY ---
+let freqView = 'orders';
+function setFreqView(view, btn) {
+  freqView = view;
+  btn.closest('.chart-actions').querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  buildFreqChart();
+}
+function buildFreqChart() {
+  const ctx = document.getElementById('freqChart');
+  if(!ctx) return;
+  const top15 = DATA.freqTable.slice(0,15);
+  const labels = top15.map(r=>r.name.length>18?r.name.slice(0,18)+'...':r.name);
+  const vals = freqView==='orders' ? top15.map(r=>r.orders) : top15.map(r=>r.aov);
+  const color = freqView==='orders' ? 'rgba(108,99,255,0.8)' : 'rgba(0,184,148,0.8)';
+  buildChart('freqChart',{
+    type:'bar',
+    data:{labels,datasets:[{label:freqView==='orders'?'No. of Orders':'Avg Order Value (GHS)',data:vals,backgroundColor:color,borderRadius:6,borderWidth:0}]},
+    options:{...CHART_DEFAULTS,indexAxis:'y',plugins:{...CHART_DEFAULTS.plugins,legend:{display:false},tooltip:{...CHART_DEFAULTS.plugins.tooltip,callbacks:{label:ctx=>freqView==='orders'?ctx.raw+' orders':'GHS '+ctx.raw.toLocaleString()}}}}
+  });
+}
+function buildFreqRevenueChart() {
+  const ctx = document.getElementById('freqRevenueChart');
+  if(!ctx) return;
+  const top10 = DATA.freqTable.slice(0,10);
+  const labels = top10.map(r=>r.name.length>14?r.name.slice(0,14)+'...':r.name);
+  buildChart('freqRevenueChart',{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Orders',data:top10.map(r=>r.orders),backgroundColor:'rgba(108,99,255,0.8)',borderRadius:6,yAxisID:'y'},
+      {label:'Revenue (GHS)',data:top10.map(r=>r.revenue),backgroundColor:'rgba(0,184,148,0.5)',borderRadius:6,yAxisID:'y1'}
+    ]},
+    options:{...CHART_DEFAULTS,plugins:{...CHART_DEFAULTS.plugins,tooltip:{...CHART_DEFAULTS.plugins.tooltip,callbacks:{label:ctx=>ctx.datasetIndex===0?ctx.raw+' orders':'GHS '+ctx.raw.toLocaleString()}}},
+      scales:{
+        x:{ticks:{color:'#6b7280',font:{size:10}},grid:{color:'rgba(200,210,230,0.7)'}},
+        y:{ticks:{color:'#6b7280'},grid:{color:'rgba(200,210,230,0.7)'},title:{display:true,text:'Orders',color:'#6b7280',font:{size:11}}},
+        y1:{position:'right',ticks:{color:'#6b7280',callback:v=>'GHS '+v.toLocaleString()},grid:{display:false},title:{display:true,text:'Revenue',color:'#6b7280',font:{size:11}}}
+      }
+    }
+  });
+}
+function renderFreqTable(data) {
+  const tbody = document.getElementById('freqTableBody');
+  if(!tbody) return;
+  const maxOrders = Math.max(...DATA.freqTable.map(r=>r.orders));
+  const totalOrders = DATA.freqTable.reduce((s,r)=>s+r.orders,0);
+  tbody.innerHTML = data.map((r,i)=>{
+    const share = (r.orders/totalOrders*100).toFixed(1);
+    const barW = (r.orders/maxOrders*100).toFixed(0);
+    return `<tr>
+      <td>${i+1}</td>
+      <td style="font-weight:600">${r.name}</td>
+      <td style="font-weight:800;color:#6c63ff;font-size:15px">${r.orders}</td>
+      <td style="color:#1e2235;font-weight:600">GHS ${r.revenue.toLocaleString()}</td>
+      <td style="color:#6b7280">GHS ${r.aov.toLocaleString()}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar" style="width:90px">
+            <div class="progress-fill" style="width:${barW}%;background:#6c63ff"></div>
+          </div>
+          <span style="font-size:12px;color:#6b7280">${share}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function buildFreqTable() { renderFreqTable(DATA.freqTable); }
+function filterFreqTable(q) {
+  renderFreqTable(DATA.freqTable.filter(r=>r.name.toLowerCase().includes(q.toLowerCase())));
+}
+
+// --- OUTSTANDING BALANCES TABLE ---
+function renderOutstandingTable(data) {
+  const tbody = document.getElementById('outstandingTableBody');
+  if(!tbody) return;
+  tbody.innerHTML = data.map((r,i)=>{
+    const rateColor = r.rate >= 70 ? '#00856f' : r.rate >= 40 ? '#f39c12' : '#e74c3c';
+    const rateBg = r.rate >= 70 ? 'rgba(0,133,111,.1)' : r.rate >= 40 ? 'rgba(243,156,18,.1)' : 'rgba(231,76,60,.1)';
+    return `<tr>
+      <td>${i+1}</td>
+      <td style="font-weight:600">${r.name}</td>
+      <td>GHS ${r.invoice.toLocaleString()}</td>
+      <td style="color:#00856f;font-weight:600">GHS ${r.collected.toLocaleString()}</td>
+      <td style="color:#e74c3c;font-weight:700">GHS ${r.outstanding.toLocaleString()}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar" style="width:90px">
+            <div class="progress-fill" style="width:${r.rate}%;background:${rateColor}"></div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${rateColor};background:${rateBg};padding:2px 7px;border-radius:12px">${r.rate}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function buildOutstandingTable() { renderOutstandingTable(DATA.outstandingTable); }
+function filterOutstanding(q) {
+  const filtered = DATA.outstandingTable.filter(r=>r.name.toLowerCase().includes(q.toLowerCase()));
+  renderOutstandingTable(filtered);
+}
+
 // --- PAYMENT CHARTS ---
 function buildPayMode() {
  const ctx = document.getElementById('payModeChart');
@@ -1090,7 +1315,7 @@ function initPage(pid) {
  } else if(pid==='products') {
  buildProductChart(); buildProductDonut(); buildProductTable();
  } else if(pid==='customers') {
- buildCustomerChart(); buildCustStatus(); buildCustRegion(); buildRevVsExpected(); buildCustomerTable();
+ buildCustomerChart(); buildCustStatus(); buildCustRegion(); buildRevVsExpected(); buildCustomerTable(); buildFreqChart(); buildFreqRevenueChart(); buildFreqTable(); buildOutstandingTable();
  } else if(pid==='payments') {
  buildPayMode(); buildCollectionBar(); buildSalesRepChart();
  } else if(pid==='delivery') {
