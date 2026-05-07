@@ -151,6 +151,13 @@
 </head>
 <body>
 
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="data-loader" style="display:none;position:fixed;inset:0;background:rgba(240,243,250,0.92);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+ <div style="width:44px;height:44px;border:4px solid #dde2f0;border-top-color:#6c63ff;border-radius:50%;animation:spin .8s linear infinite;"></div>
+ <div id="loader-msg" style="font-size:15px;font-weight:600;color:#6b7280;">Loading live data...</div>
+ <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</div>
+
 <!-- ===== SIDEBAR ===== -->
 <aside id="sidebar">
  <div class="logo">
@@ -186,7 +193,9 @@
  <div class="topbar">
  <span class="topbar-title" id="topbarTitle">Overview</span>
  <div class="topbar-right">
- <span class="date-chip" style="color:#1e2235;font-weight:700;border-color:#1e2235;">Jan - Apr 2026</span>
+ <span id="data-status" style="font-size:12px;padding:5px 12px;border-radius:8px;font-weight:600;background:#fff3cd;color:#856404;border:1px solid #ffc107;">⏳ Connecting to Google Sheets...</span>
+ <button onclick="retryLoad()" style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">↻ Refresh</button>
+ <span class="date-chip" style="color:#1e2235;font-weight:700;border-color:#1e2235;" id="date-range-chip">Jan - Apr 2026</span>
  </div>
  </div>
 
@@ -201,43 +210,43 @@
  <div class="scorecard-grid">
  <div class="scorecard" style="--card-color:#6c63ff">
  <div class="sc-label">Total Revenue</div>
- <div class="sc-value" data-count="2054114.5" data-prefix="GHS " data-format="currency">GHS 0</div>
+ <div id="sc-total-revenue" class="sc-value" data-count="2054114.5" data-prefix="GHS " data-format="currency">GHS 0</div>
  <div class="sc-sub">Invoiced YTD</div>
  </div>
  <div class="scorecard" style="--card-color:#00d4aa">
- <div class="sc-label">Collected <span class="sc-pct">(52.3%)</span></div>
- <div class="sc-value" data-count="1074691" data-prefix="GHS " data-format="currency">GHS 0</div>
- <div class="sc-sub">Cash received</div>
+ <div class="sc-label">Collected <span id="sc-coll-pct" class="sc-pct">(52.3%)</span></div>
+ <div id="sc-collected" class="sc-value" data-count="1074691" data-prefix="GHS " data-format="currency">GHS 0</div>
+ <div id="sc-coll-sub" class="sc-sub">Cash received</div>
  </div>
  <div class="scorecard" style="--card-color:#ff6b6b">
- <div class="sc-label">Outstanding <span class="sc-pct">(47.7%)</span></div>
- <div class="sc-value" data-count="979423.5" data-prefix="GHS " data-format="currency">GHS 0</div>
- <div class="sc-sub">Unpaid balance</div>
+ <div class="sc-label">Outstanding <span id="sc-out-pct" class="sc-pct">(47.7%)</span></div>
+ <div id="sc-outstanding" class="sc-value" data-count="979423.5" data-prefix="GHS " data-format="currency">GHS 0</div>
+ <div id="sc-out-sub" class="sc-sub">Unpaid balance</div>
  </div>
  <div class="scorecard" style="--card-color:#ffd93d">
- <div class="sc-label">Total Orders <span class="sc-pct">(100%)</span></div>
- <div class="sc-value" data-count="289" data-format="int">0</div>
- <div class="sc-sub">All delivered</div>
+ <div class="sc-label">Total Orders <span id="sc-orders-pct" class="sc-pct">(100%)</span></div>
+ <div id="sc-total-orders" class="sc-value" data-count="289" data-format="int">0</div>
+ <div id="sc-orders-sub" class="sc-sub">All delivered</div>
  </div>
  <div class="scorecard" style="--card-color:#54a0ff">
  <div class="sc-label">Avg Order Value</div>
- <div class="sc-value" data-count="7107.66" data-prefix="GHS " data-format="currency">GHS 0</div>
+ <div id="sc-aov" class="sc-value" data-count="7107.66" data-prefix="GHS " data-format="currency">GHS 0</div>
  <div class="sc-sub">Per order</div>
  </div>
  <div class="scorecard" style="--card-color:#a29bfe">
- <div class="sc-label">Active Customers <span class="sc-pct">(71.9%)</span></div>
- <div class="sc-value" data-count="41" data-format="int">0</div>
- <div class="sc-sub">of 57 total</div>
+ <div class="sc-label">Active Customers <span id="sc-cust-pct" class="sc-pct">(71.9%)</span></div>
+ <div id="sc-active-cust" class="sc-value" data-count="41" data-format="int">0</div>
+ <div id="sc-cust-sub" class="sc-sub">of 57 total</div>
  </div>
  <div class="scorecard" style="--card-color:#ff9f43">
  <div class="sc-label">Fulfillment Rate</div>
- <div class="sc-value" data-count="100" data-suffix="%" data-format="int">0%</div>
- <div class="sc-sub">289/289 delivered</div>
+ <div id="sc-fulfillment" class="sc-value" data-count="100" data-suffix="%" data-format="int">0%</div>
+ <div id="sc-fulfill-sub" class="sc-sub">289/289 delivered</div>
  </div>
  <div class="scorecard" style="--card-color:#4ecdc4">
  <div class="sc-label">Top Revenue</div>
- <div class="sc-value" style="font-size:18px">Birikwart</div>
- <div class="sc-sub">GHS 207,660 YTD</div>
+ <div id="sc-top-cust-name" class="sc-value" style="font-size:18px">Birikwart</div>
+ <div id="sc-top-cust-sub" class="sc-sub">GHS 207,660 YTD</div>
  </div>
  </div>
 
@@ -369,18 +378,18 @@
  <div class="scorecard-grid">
  <div class="scorecard" style="--card-color:#6c63ff">
  <div class="sc-label">Top Product</div>
- <div class="sc-value" style="font-size:14px">NewCavac</div>
- <div class="sc-sub">VIRSIN 121L - GHS 829,080</div>
+ <div id="sc-prod1-name" class="sc-value" style="font-size:14px">NewCavac</div>
+ <div id="sc-prod1-sub" class="sc-sub">VIRSIN 121L - GHS 829,080</div>
  </div>
  <div class="scorecard" style="--card-color:#00d4aa">
  <div class="sc-label">#2 Product</div>
- <div class="sc-value" style="font-size:14px">Fowl Pox</div>
- <div class="sc-sub">VIR 102 - GHS 390,938</div>
+ <div id="sc-prod2-name" class="sc-value" style="font-size:14px">Fowl Pox</div>
+ <div id="sc-prod2-sub" class="sc-sub">VIR 102 - GHS 390,938</div>
  </div>
  <div class="scorecard" style="--card-color:#ff9f43">
  <div class="sc-label">#3 Product</div>
- <div class="sc-value" style="font-size:14px">Gumboro</div>
- <div class="sc-sub">VIR 114 - GHS 311,700</div>
+ <div id="sc-prod3-name" class="sc-value" style="font-size:14px">Gumboro</div>
+ <div id="sc-prod3-sub" class="sc-sub">VIR 114 - GHS 311,700</div>
  </div>
  <div class="scorecard" style="--card-color:#54a0ff">
  <div class="sc-label">Vaccine Share</div>
@@ -594,23 +603,23 @@
  <div class="scorecard-grid">
  <div class="scorecard" style="--card-color:#00d4aa">
  <div class="sc-label">Total Invoiced</div>
- <div class="sc-value" data-count="2054114.5" data-prefix="GHS " data-format="currency">GHS 0</div>
+ <div id="sc-pay-invoiced" class="sc-value" data-count="2054114.5" data-prefix="GHS " data-format="currency">GHS 0</div>
  <div class="sc-sub">All invoices</div>
  </div>
  <div class="scorecard" style="--card-color:#6c63ff">
- <div class="sc-label">Collected <span class="sc-pct">(52.3%)</span></div>
- <div class="sc-value" data-count="1074691" data-prefix="GHS " data-format="currency">GHS 0</div>
- <div class="sc-sub">52.3% collection rate</div>
+ <div class="sc-label">Collected <span id="sc-pay-coll-pct" class="sc-pct">(52.3%)</span></div>
+ <div id="sc-pay-collected" class="sc-value" data-count="1074691" data-prefix="GHS " data-format="currency">GHS 0</div>
+ <div id="sc-pay-coll-sub" class="sc-sub">52.3% collection rate</div>
  </div>
  <div class="scorecard" style="--card-color:#ff6b6b">
- <div class="sc-label">Outstanding <span class="sc-pct">(47.7%)</span></div>
- <div class="sc-value" data-count="979423.5" data-prefix="GHS " data-format="currency">GHS 0</div>
- <div class="sc-sub">Needs collection</div>
+ <div class="sc-label">Outstanding <span id="sc-pay-out-pct" class="sc-pct">(47.7%)</span></div>
+ <div id="sc-pay-outstanding" class="sc-value" data-count="979423.5" data-prefix="GHS " data-format="currency">GHS 0</div>
+ <div id="sc-pay-out-sub" class="sc-sub">Needs collection</div>
  </div>
  <div class="scorecard" style="--card-color:#ffd93d">
- <div class="sc-label">Top Payment Mode <span class="sc-pct">(77.4%)</span></div>
- <div class="sc-value" style="font-size:16px">MoMo</div>
- <div class="sc-sub">113 transactions</div>
+ <div class="sc-label">Top Payment Mode <span id="sc-pay-mode-pct" class="sc-pct">(77.4%)</span></div>
+ <div id="sc-pay-mode-name" class="sc-value" style="font-size:16px">MoMo</div>
+ <div id="sc-pay-mode-sub" class="sc-sub">113 transactions</div>
  </div>
  </div>
 
@@ -713,139 +722,164 @@
 </main>
 
 <script>
-// ====================== DATA ======================
-const DATA = {
- monthly: {
- labels: ['January', 'February', 'March', 'April'],
- revenue: [628783, 417194.5, 420180, 594257],
- targets: [484285, 420363.97, 427374.05, 722514.5]
- },
- weekly: {
- labels: ['W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12','W14','W15','W16','W17','W18'],
- revenue: [167045,170758,283680,7300,88715,167306.5,122680,38493,127205,218065,34430,40480,216824,190087,131671,49375],
- targets: [239967.9,66657.75,106652.4,31106.95,67178.68,123750.2,53035.8,109607.32,70807.3,130434.5,55900.5,26086.9,132737.23,244515.95,104792.55,216571.27],
- aov: [6960.2,11383.9,10506.7,2433.3,5914.3,7274.2,5111.7,3849.3,7950.3,9086.0,3825.6,2381.2,21682.4,5137.5,5064.3,6171.9],
- orders: [24,15,27,3,15,23,24,10,16,24,9,17,10,37,26,8]
- },
- regions: {
- labels: ['Ashanti','Eastern','Bono East','Bono','Greater Accra','Western North','Volta','Ahafo','Northern','Oti'],
- values: [989640.5,272000,193777,188780,187135,89660,89319,30780,18250,465]
- },
- products: {
- labels: ['NewCavac (121L)','Fowl Pox (102)','Gumboro (114)','Lasota (116)','HB1 (105)','ND+IB+EDS (423L)','I2 ND-VAC','Lasota+IB (220)'],
- values: [829080,390937.5,311700,298707.5,139037.5,44800,20938,20384]
- },
- customers: {
- labels: ['Birikwart Ventures','Shamo Farms','Vetshop Ventures','Maxvet Ventures','Emevet Ventures','Barima Bama Vet','Konodia Vet','Ho Vet Service','Razz Asaana Ent','Grateful Heart'],
- revenue: [207660,157090.5,137420,123995,109455,98280,89575,89319,89260,81800],
- expected: [622980,471271.5,412260,371985,328365,294840,268725,267957,267780,245400],
- salesZone: ['Mpanya','Mpanya','Mpanya','Mpanya','Mpanya','Bono','Mpanya','Krachie','Mpanya','Mpanya']
- },
- salesperson: {
- labels: ['Righteous Kamoah','Michae Osei Wiafe','Goodman Dakurah'],
- revenue: [1966046.5,69210,18858]
- },
- paymentMode: {
- labels: ['MoMo Transfer','Bank Deposit','Bank Transfer'],
- values: [113,26,6]
- },
- customerStatus: { labels: ['Active','Inactive'], values: [41,16] },
- custRegion: {
- labels: ['Ashanti','Eastern','Bono East','Bono','Gr. Accra','W. North','Volta','Ahafo','Northern'],
- values: [979590.5,272000,197527,188780,187135,89660,89319,30780,18858]
- },
- delivZone: {
- labels: ['Anum Zone','Krachie Zone','Mpanya Zone','Omenako Zone','Vobpsi Zone'],
- values: [59,9,7,6,1]
- },
- delivType: { labels: ['Farmer','Agrovet'], values: [68,11] },
-  freqTable: [
-    {name:'Razz Asaana Ent',orders:74,revenue:89260,aov:1206,last:'28 Apr 2026'},
-    {name:'Good God Pet Shop',orders:19,revenue:43657,aov:2298,last:'16 Apr 2026'},
-    {name:'Samnart G&M Vet Drugs',orders:13,revenue:5135,aov:395,last:'22 Apr 2026'},
-    {name:'Animal Maniak',orders:12,revenue:39335,aov:3278,last:'22 Apr 2026'},
-    {name:'247 WillyRose Ent.',orders:11,revenue:29540,aov:2685,last:'21 Apr 2026'},
-    {name:'Birikwart Ventures',orders:11,revenue:207660,aov:18878,last:'20 Apr 2026'},
-    {name:'Lowelem Veterinary Service',orders:11,revenue:45068,aov:4097,last:'28 Apr 2026'},
-    {name:'Tafo Veterinary Service',orders:9,revenue:55150,aov:6128,last:'28 Apr 2026'},
-    {name:'Alex Farms',orders:9,revenue:38525,aov:4281,last:'28 Apr 2026'},
-    {name:'Grateful Heart Farms',orders:9,revenue:81800,aov:9089,last:'21 Apr 2026'},
-    {name:'Nkawkaw Veterinary Clinic',orders:8,revenue:36330,aov:4541,last:'27 Apr 2026'},
-    {name:'Emevet Ventures',orders:8,revenue:109455,aov:13682,last:'28 Apr 2026'},
-    {name:'Ho Veterinary Service',orders:8,revenue:89319,aov:11165,last:'28 Apr 2026'},
-    {name:'Finger of God Enterprise',orders:7,revenue:44077,aov:6297,last:'17 Apr 2026'},
-    {name:'KG Vet Services',orders:7,revenue:33295,aov:4756,last:'28 Apr 2026'},
-    {name:'Maxvet Ventures',orders:6,revenue:123995,aov:20666,last:'10 Apr 2026'},
-    {name:'Be Just Enterprise',orders:6,revenue:35685,aov:5948,last:'15 Apr 2026'},
-    {name:'Shamo Farms and Trading',orders:5,revenue:157090.5,aov:31418,last:'20 Apr 2026'},
-    {name:'Vetshop Ventures',orders:4,revenue:137420,aov:34355,last:'22 Apr 2026'},
-    {name:'Welcome Complex Trading',orders:4,revenue:43225,aov:10806,last:'13 Apr 2026'}
-  ],
-  outstandingTable: [
-    {name:'Birikwart Ventures',invoice:207660,collected:91250,outstanding:116410,rate:43.9},
-    {name:'Shamo Farms and Trading Ent',invoice:157090.5,collected:78992,outstanding:78098.5,rate:50.3},
-    {name:'Barima Bama Vet Shop',invoice:98280,collected:29780,outstanding:68500,rate:30.3},
-    {name:'Ho Veterinary Service',invoice:89319,collected:33839,outstanding:55480,rate:37.9},
-    {name:'Emevet Ventures',invoice:109455,collected:54700,outstanding:54755,rate:50.0},
-    {name:'Grateful Heart Farms',invoice:81800,collected:35750,outstanding:46050,rate:43.7},
-    {name:'Eddy Janco Enterprise',invoice:60500,collected:15950,outstanding:44550,rate:26.4},
-    {name:'Good God Pet Shop',invoice:43657,collected:0,outstanding:43657,rate:0.0},
-    {name:'Maxvet Ventures',invoice:123995,collected:80920,outstanding:43075,rate:65.3},
-    {name:'Konodia Veterinary',invoice:89575,collected:47225,outstanding:42350,rate:52.7},
-    {name:'Alphadique Farms',invoice:43650,collected:5432,outstanding:38218,rate:12.4},
-    {name:'Addvet Solutions',invoice:71650,collected:40000,outstanding:31650,rate:55.8},
-    {name:'Veterinary Drug House',invoice:30000,collected:0,outstanding:30000,rate:0.0},
-    {name:'Razz Asaana Ent',invoice:89260,collected:59610,outstanding:29650,rate:66.8},
-    {name:'Vetshop Ventures',invoice:137420,collected:112740,outstanding:24680,rate:82.0},
-    {name:'Finger of God Enterprise',invoice:44077,collected:20510,outstanding:23567,rate:46.5},
-    {name:'Lowelem Veterinary Service',invoice:45068,collected:22483,outstanding:22585,rate:49.9},
-    {name:'Tafo Veterinary Service',invoice:55150,collected:33500,outstanding:21650,rate:60.7},
-    {name:'Yaks Agrovet Limited',invoice:30780,collected:9750,outstanding:21030,rate:31.7},
-    {name:'Vic K Ventures',invoice:18530,collected:0,outstanding:18530,rate:0.0},
-    {name:'Welcome Complex Trading',invoice:43225,collected:25935,outstanding:17290,rate:60.0},
-    {name:'Animal Maniak',invoice:39335,collected:22650,outstanding:16685,rate:57.6},
-    {name:'KG Vet Services',invoice:33295,collected:17520,outstanding:15775,rate:52.6},
-    {name:'Alex Farms',invoice:32225,collected:19885,outstanding:12340,rate:61.7},
-    {name:'Charlotte Vet',invoice:19940,collected:9160,outstanding:10780,rate:45.9},
-    {name:'Nkawkaw Veterinary Clinic',invoice:36330,collected:26000,outstanding:10330,rate:71.6},
-    {name:'AAE37 Enterprise',invoice:19770,collected:10645,outstanding:9125,rate:53.8},
-    {name:'Be Just Enterprise',invoice:35685,collected:27705,outstanding:7980,rate:77.6},
-    {name:'247 WillyRose Ent.',invoice:29540,collected:21880,outstanding:7660,rate:74.1},
-    {name:'Vic Jeaf Enterprise',invoice:6300,collected:0,outstanding:6300,rate:0.0},
-    {name:'Danjima Ventures',invoice:4780,collected:380,outstanding:4400,rate:7.9},
-    {name:'Super Vet',invoice:7575,collected:5385,outstanding:2190,rate:71.1},
-    {name:'Samnart G&M Vet Drugs',invoice:5135,collected:3645,outstanding:1490,rate:71.0},
-    {name:'Righteous Life Ent.',invoice:2575,collected:1320,outstanding:1255,rate:51.3},
-    {name:'Capital Vet Enterprise',invoice:5895,collected:5165,outstanding:730,rate:87.6},
-    {name:'Akhlaq Veterinary Pharmacy',invoice:608,collected:0,outstanding:608,rate:0.0}
-  ],
- custTable: [
- {name:'Birikwart Ventures',region:'Ashanti',status:'Active',purchases:11,revenue:207660,expected:622980},
- {name:'Shamo Farms & Trading',region:'Ashanti',status:'Active',purchases:5,revenue:157090.5,expected:471271.5},
- {name:'Vetshop Ventures',region:'Ashanti',status:'Active',purchases:4,revenue:137420,expected:412260},
- {name:'Maxvet Ventures',region:'Ashanti',status:'Active',purchases:6,revenue:123995,expected:371985},
- {name:'Emevet Ventures',region:'Ashanti',status:'Active',purchases:4,revenue:109455,expected:328365},
- {name:'Barima Bama Vet Shop',region:'Bono',status:'Active',purchases:3,revenue:98280,expected:294840},
- {name:'Konodia Veterinary',region:'Ashanti',status:'Active',purchases:3,revenue:89575,expected:268725},
- {name:'Ho Veterinary Service',region:'Volta',status:'Active',purchases:4,revenue:89319,expected:267957},
- {name:'Razz Asaana Ent',region:'Ashanti',status:'Active',purchases:5,revenue:89260,expected:267780},
- {name:'Grateful Heart Farms',region:'Ashanti',status:'Active',purchases:3,revenue:81800,expected:245400},
- {name:'Dexvet GH Limited',region:'Greater Accra',status:'Active',purchases:3,revenue:75625,expected:226875},
- {name:'Nana Acheampong Farms',region:'Eastern',status:'Active',purchases:2,revenue:70000,expected:210000}
- ],
- delivTable: [
- {customer:'Razz Asaana Ent',zone:'Mpanya Sales Zone',drop:'Frante Clinic Ejura',time:'2 hrs 24 mins',type:'Farmer'},
- {customer:'Razz Asaana Ent',zone:'Mpanya Sales Zone',drop:'Yonso Health Center',time:'1 hr 15 mins',type:'Farmer'},
- {customer:'Ho Veterinary Service',zone:'Krachie Sales Zone',drop:'Nkwanta HSP',time:'1 hr 2 mins',type:'Farmer'},
- {customer:'Ho Veterinary Service',zone:'Krachie Sales Zone',drop:'Kadjiebi HC',time:'1 hr 44 mins',type:'Farmer'},
- {customer:'Ho Veterinary Service',zone:'Krachie Sales Zone',drop:'Dambai HC',time:'2 hrs 30 mins',type:'Farmer'},
- {customer:'Ho Veterinary Service',zone:'Krachie Sales Zone',drop:'Dambai HC',time:'3 hrs 6 mins',type:'Farmer'},
- {customer:'Shelter Gbaffah',zone:'Krachie Sales Zone',drop:'Kpassa HC',time:'2 hrs 15 mins',type:'Farmer'},
- {customer:'Ho Veterinary Service',zone:'Krachie Sales Zone',drop:'Likpe Todome',time:'1 hr 7 mins',type:'Farmer'},
- {customer:'Ho Veterinary Service',zone:'Krachie Sales Zone',drop:'Mate HC',time:'2 hrs 3 mins',type:'Farmer'},
- {customer:'Ho Veterinary Service',zone:'Anum Sales Zone',drop:'Anum HC',time:'2 hrs 52 mins',type:'Farmer'}
- ]
-};
+// ====================== CONFIG ======================
+// Paste your Apps Script deployment URL here after deploying
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqo2NGCPCopngx4Wr_2nAdl6H3ebQ-hcEILQOXYAEV1Ftj0aFLQyHE2U-ORUp58LLM/exec';
+
+let DATA = null;
+let currentPage = 'overview';
+
+// ====================== LOADING ======================
+function showLoader(msg) {
+  document.getElementById('data-loader').style.display = 'flex';
+  document.getElementById('loader-msg').textContent = msg || 'Loading live data...';
+}
+function hideLoader() {
+  document.getElementById('data-loader').style.display = 'none';
+}
+
+// ====================== ERROR BANNER ======================
+function showError(msg) {
+  let banner = document.getElementById('error-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'error-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;background:#e74c3c;color:#fff;padding:12px 20px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+    banner.innerHTML = '<span id="error-banner-msg"></span><div style="display:flex;gap:10px"><button onclick="retryLoad()" style="background:rgba(255,255,255,.25);border:none;color:#fff;padding:5px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;">Retry</button><button onclick="this.closest(\'#error-banner\').remove()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:16px;">✕</button></div>';
+    document.body.prepend(banner);
+  }
+  document.getElementById('error-banner-msg').textContent = msg;
+}
+function clearError() {
+  const b = document.getElementById('error-banner');
+  if (b) b.remove();
+}
+
+function setStatus(msg, color) {
+  const el = document.getElementById('data-status');
+  if (!el) return;
+  const styles = {
+    loading: 'background:#fff3cd;color:#856404;border:1px solid #ffc107',
+    ok:      'background:#d1fae5;color:#065f46;border:1px solid #6ee7b7',
+    error:   'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5'
+  };
+  el.style.cssText = 'font-size:12px;padding:5px 12px;border-radius:8px;font-weight:600;' + (styles[color] || styles.loading);
+  el.textContent = msg;
+}
+
+// ====================== FETCH DATA ======================
+async function loadData() {
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    hideLoader();
+    setStatus('⚠ No URL configured', 'error');
+    showError('No Apps Script URL set in the HTML file.');
+    return false;
+  }
+  showLoader('Connecting to Google Sheets...');
+  setStatus('⏳ Connecting...', 'loading');
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { redirect: 'follow' });
+    const text = await res.text();
+    // Apps Script sometimes wraps in /*O_o*/ prefix — strip it
+    const clean = text.replace(/^[^{[]*/, '').replace(/[^}\]]*$/, '');
+    const json = JSON.parse(clean);
+    if (json.error) throw new Error(json.error);
+    DATA = json;
+    hideLoader();
+    clearError();
+    setStatus('✓ Live · ' + new Date().toLocaleTimeString(), 'ok');
+    console.log('✅ DATA loaded:', Object.keys(DATA));
+    return true;
+  } catch (e) {
+    hideLoader();
+    setStatus('⚠ Failed — click Refresh', 'error');
+    showError('Could not load data: ' + e.message + '. Open Console (F12) for details.');
+    console.error('loadData error:', e);
+    return false;
+  }
+}
+
+async function retryLoad() {
+  clearError();
+  const ok = await loadData();
+  if (ok) { updateScorecards(); animateCounters(); initPage(currentPage); }
+}
+
+// ====================== SCORECARD UPDATE ======================
+function updateScorecards() {
+  if (!DATA || !DATA.scorecards) return;
+  const s = DATA.scorecards;
+
+  function setCount(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.dataset.count = val;
+  }
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+  function setHtml(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = val;
+  }
+
+  // Overview scorecards
+  setCount('sc-total-revenue', s.totalRevenue);
+  setCount('sc-collected', s.collected);
+  setCount('sc-outstanding', s.outstanding);
+  setCount('sc-total-orders', s.totalOrders);
+  setCount('sc-aov', s.aov);
+  setCount('sc-active-cust', s.activeCust);
+  setCount('sc-fulfillment', s.fulfRate);
+
+  setHtml('sc-coll-pct', '(' + s.collRate + '%)');
+  setHtml('sc-out-pct', '(' + s.outRate + '%)');
+  setHtml('sc-orders-pct', '(' + s.fulfRate + '%)');
+  setHtml('sc-cust-pct', '(' + Math.round(s.activeCust / s.totalCust * 100) + '%)');
+
+  setText('sc-coll-sub', s.collRate + '% collection rate');
+  setText('sc-out-sub', s.outRate + '% outstanding');
+  setText('sc-orders-sub', s.deliveredOrders + '/' + s.totalOrders + ' delivered');
+  setText('sc-cust-sub', 'of ' + s.totalCust + ' total');
+  setText('sc-fulfill-sub', s.deliveredOrders + '/' + s.totalOrders + ' delivered');
+
+  if (s.topCust) {
+    setText('sc-top-cust-name', s.topCust.name.split(' ')[0]);
+    setText('sc-top-cust-sub', 'GHS ' + s.topCust.revenue.toLocaleString() + ' YTD');
+  }
+
+  // Product scorecards
+  if (s.prod1) {
+    setText('sc-prod1-name', s.prod1.name.split(' ')[0]);
+    setText('sc-prod1-sub', s.prod1.name + ' - GHS ' + s.prod1.revenue.toLocaleString());
+  }
+  if (s.prod2) {
+    setText('sc-prod2-name', s.prod2.name.split(' ')[0]);
+    setText('sc-prod2-sub', s.prod2.name + ' - GHS ' + s.prod2.revenue.toLocaleString());
+  }
+  if (s.prod3) {
+    setText('sc-prod3-name', s.prod3.name.split(' ')[0]);
+    setText('sc-prod3-sub', s.prod3.name + ' - GHS ' + s.prod3.revenue.toLocaleString());
+  }
+
+  // Payment page scorecards
+  setCount('sc-pay-invoiced', s.totalRevenue);
+  setCount('sc-pay-collected', s.collected);
+  setCount('sc-pay-outstanding', s.outstanding);
+
+  setHtml('sc-pay-coll-pct', '(' + s.collRate + '%)');
+  setHtml('sc-pay-out-pct', '(' + s.outRate + '%)');
+  setText('sc-pay-coll-sub', s.collRate + '% collection rate');
+  setText('sc-pay-out-sub', 'Needs collection');
+
+  if (s.topPayMode) {
+    const modeName = s.topPayMode.name.toLowerCase().includes('momo') ? 'MoMo' : s.topPayMode.name.split(' ')[0];
+    setHtml('sc-pay-mode-pct', '(' + s.topPayMode.share + '%)');
+    setText('sc-pay-mode-name', modeName);
+    setText('sc-pay-mode-sub', s.topPayMode.count + ' transactions');
+  }
+}
 
 // ====================== COLORS ======================
 const PALETTE = ['#6c63ff','#00d4aa','#ff6b6b','#ffd93d','#54a0ff','#ff9f43','#a29bfe','#4ecdc4','#fd79a8','#00b894'];
@@ -914,6 +948,7 @@ function setMonthlyView(type, btn) {
  buildMonthlyChart();
 }
 function buildMonthlyChart() {
+ if(!DATA) return;
  const ctx = document.getElementById('monthlyChart');
  if(!ctx) return;
  buildChart('monthlyChart',{
@@ -931,6 +966,7 @@ function buildMonthlyChart() {
 
 // --- REGION DONUT ---
 function buildRegionDonut(id='regionDonut') {
+ if(!DATA) return;
  const ctx = document.getElementById(id);
  if(!ctx) return;
  buildChart(id,{
@@ -942,6 +978,7 @@ function buildRegionDonut(id='regionDonut') {
 
 // --- SALESPERSON ---
 function buildSalesperson() {
+ if(!DATA) return;
  const ctx = document.getElementById('salespersonChart');
  if(!ctx) return;
  buildChart('salespersonChart',{
@@ -956,11 +993,12 @@ function buildSalesperson() {
 
 // --- COLLECTION DONUT ---
 function buildCollectionDonut() {
+ if(!DATA) return;
  const ctx = document.getElementById('collectionDonut');
  if(!ctx) return;
  buildChart('collectionDonut',{
  type:'doughnut',
- data:{labels:['Collected','Outstanding'],datasets:[{data:[1074691,979423.5],backgroundColor:['rgba(0,212,170,0.85)','rgba(255,107,107,0.85)'],borderColor:'#ffffff',borderWidth:3,hoverOffset:6}]},
+ data:{labels:['Collected','Outstanding'],datasets:[{data:[DATA.scorecards.collected,DATA.scorecards.outstanding],backgroundColor:['rgba(0,212,170,0.85)','rgba(255,107,107,0.85)'],borderColor:'#ffffff',borderWidth:3,hoverOffset:6}]},
  options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'bottom',labels:{color:'#6b7280',font:{size:12}}},tooltip:{backgroundColor:'#ffffff',borderColor:'#dde2f0',borderWidth:1,titleColor:'#1e2235',bodyColor:'#6b7280',callbacks:{label:ctx=>' GHS '+ctx.raw.toLocaleString()}}}}
  });
 }
@@ -974,6 +1012,7 @@ function setWeekView(view, btn) {
  buildWeeklyChart();
 }
 function buildWeeklyChart() {
+ if(!DATA) return;
  const ctx = document.getElementById('weeklyChart');
  if(!ctx) return;
  let datasets;
@@ -992,6 +1031,7 @@ function buildWeeklyChart() {
 
 // --- TARGET RATE ---
 function buildTargetRate() {
+ if(!DATA) return;
  const ctx = document.getElementById('targetRateChart');
  if(!ctx) return;
  const rates = DATA.weekly.revenue.map((r,i)=>Math.round((r/DATA.weekly.targets[i])*100));
@@ -1005,6 +1045,7 @@ function buildTargetRate() {
 
 // --- MONTHLY BAR ---
 function buildMonthlyBar() {
+ if(!DATA) return;
  const ctx = document.getElementById('monthlyBarChart');
  if(!ctx) return;
  buildChart('monthlyBarChart',{
@@ -1026,6 +1067,7 @@ function setProdView(view, btn) {
  buildProductChart();
 }
 function buildProductChart() {
+ if(!DATA) return;
  const ctx = document.getElementById('productChart');
  if(!ctx) return;
  const isH = prodView==='horizontal';
@@ -1036,6 +1078,7 @@ function buildProductChart() {
  });
 }
 function buildProductDonut() {
+ if(!DATA) return;
  const ctx = document.getElementById('productDonut');
  if(!ctx) return;
  buildChart('productDonut',{
@@ -1045,6 +1088,7 @@ function buildProductDonut() {
  });
 }
 function buildProductTable() {
+ if(!DATA) return;
  const tbody = document.getElementById('productTableBody');
  if(!tbody) return;
  const total = DATA.products.values.reduce((a,b)=>a+b,0);
@@ -1069,6 +1113,7 @@ function setCustView(view, btn) {
  buildCustomerChart();
 }
 function buildCustomerChart() {
+ if(!DATA) return;
  const ctx = document.getElementById('customerChart');
  if(!ctx) return;
  const data = custView==='revenue'?DATA.customers.revenue:DATA.customers.expected;
@@ -1080,6 +1125,7 @@ function buildCustomerChart() {
  });
 }
 function buildCustStatus() {
+ if(!DATA) return;
  const ctx = document.getElementById('custStatusDonut');
  if(!ctx) return;
  buildChart('custStatusDonut',{
@@ -1089,6 +1135,7 @@ function buildCustStatus() {
  });
 }
 function buildCustRegion() {
+ if(!DATA) return;
  const ctx = document.getElementById('custRegionChart');
  if(!ctx) return;
  buildChart('custRegionChart',{
@@ -1098,6 +1145,7 @@ function buildCustRegion() {
  });
 }
 function buildRevVsExpected() {
+ if(!DATA) return;
  const ctx = document.getElementById('revVsExpectedChart');
  if(!ctx) return;
  buildChart('revVsExpectedChart',{
@@ -1110,6 +1158,7 @@ function buildRevVsExpected() {
  });
 }
 function buildCustomerTable() {
+ if(!DATA) return;
  const tbody = document.getElementById('customerTableBody');
  if(!tbody) return;
  const maxRev = Math.max(...DATA.custTable.map(c=>c.revenue));
@@ -1126,7 +1175,6 @@ function buildCustomerTable() {
  </tr>`;
  }).join('');
 }
-let custTableData = DATA.custTable;
 function filterCustomers(q) {
  const tbody = document.getElementById('customerTableBody');
  if(!tbody) return;
@@ -1147,6 +1195,7 @@ function setFreqView(view, btn) {
   buildFreqChart();
 }
 function buildFreqChart() {
+ if(!DATA) return;
   const ctx = document.getElementById('freqChart');
   if(!ctx) return;
   const top15 = DATA.freqTable.slice(0,15);
@@ -1160,6 +1209,7 @@ function buildFreqChart() {
   });
 }
 function buildFreqRevenueChart() {
+ if(!DATA) return;
   const ctx = document.getElementById('freqRevenueChart');
   if(!ctx) return;
   const top10 = DATA.freqTable.slice(0,10);
@@ -1204,7 +1254,7 @@ function renderFreqTable(data) {
     </tr>`;
   }).join('');
 }
-function buildFreqTable() { renderFreqTable(DATA.freqTable); }
+function buildFreqTable() { if(!DATA) return; renderFreqTable(DATA.freqTable); }
 function filterFreqTable(q) {
   renderFreqTable(DATA.freqTable.filter(r=>r.name.toLowerCase().includes(q.toLowerCase())));
 }
@@ -1233,7 +1283,7 @@ function renderOutstandingTable(data) {
     </tr>`;
   }).join('');
 }
-function buildOutstandingTable() { renderOutstandingTable(DATA.outstandingTable); }
+function buildOutstandingTable() { if(!DATA) return; renderOutstandingTable(DATA.outstandingTable); }
 function filterOutstanding(q) {
   const filtered = DATA.outstandingTable.filter(r=>r.name.toLowerCase().includes(q.toLowerCase()));
   renderOutstandingTable(filtered);
@@ -1241,6 +1291,7 @@ function filterOutstanding(q) {
 
 // --- PAYMENT CHARTS ---
 function buildPayMode() {
+ if(!DATA) return;
  const ctx = document.getElementById('payModeChart');
  if(!ctx) return;
  buildChart('payModeChart',{
@@ -1250,15 +1301,17 @@ function buildPayMode() {
  });
 }
 function buildCollectionBar() {
+ if(!DATA) return;
  const ctx = document.getElementById('collectionBarChart');
  if(!ctx) return;
  buildChart('collectionBarChart',{
  type:'bar',
- data:{labels:['Revenue Collected','Outstanding Balance'],datasets:[{label:'GHS',data:[1074691,979423.5],backgroundColor:['rgba(0,212,170,0.85)','rgba(255,107,107,0.85)'],borderRadius:10,borderWidth:0}]},
+ data:{labels:['Revenue Collected','Outstanding Balance'],datasets:[{label:'GHS',data:[DATA.scorecards.collected,DATA.scorecards.outstanding],backgroundColor:['rgba(0,212,170,0.85)','rgba(255,107,107,0.85)'],borderRadius:10,borderWidth:0}]},
  options:{...CHART_DEFAULTS,plugins:{...CHART_DEFAULTS.plugins,legend:{display:false},tooltip:{...CHART_DEFAULTS.plugins.tooltip,callbacks:{label:ctx=>'GHS '+ctx.raw.toLocaleString()}}}}
  });
 }
 function buildSalesRepChart() {
+ if(!DATA) return;
  const ctx = document.getElementById('salesRepChart');
  if(!ctx) return;
  buildChart('salesRepChart',{
@@ -1270,6 +1323,7 @@ function buildSalesRepChart() {
 
 // --- DELIVERY CHARTS ---
 function buildZoneChart() {
+ if(!DATA) return;
  const ctx = document.getElementById('zoneChart');
  if(!ctx) return;
  buildChart('zoneChart',{
@@ -1279,6 +1333,7 @@ function buildZoneChart() {
  });
 }
 function buildDelivTypeChart() {
+ if(!DATA) return;
  const ctx = document.getElementById('delivTypeChart');
  if(!ctx) return;
  buildChart('delivTypeChart',{
@@ -1288,6 +1343,7 @@ function buildDelivTypeChart() {
  });
 }
 function buildDeliveryTable() {
+ if(!DATA) return;
  const tbody = document.getElementById('deliveryTableBody');
  if(!tbody) return;
  tbody.innerHTML = DATA.delivTable.map((d,i)=>`<tr>
@@ -1307,29 +1363,49 @@ function filterDeliveries(q) {
 }
 
 // ====================== INIT ======================
+function safeCall(fn) {
+  try { fn(); }
+  catch(e) { console.error('Chart build error [' + fn.name + ']:', e.message, '\nDATA keys:', DATA ? Object.keys(DATA) : 'DATA is null'); }
+}
 function initPage(pid) {
  if(pid==='overview') {
- buildMonthlyChart(); buildRegionDonut(); buildSalesperson(); buildCollectionDonut();
+   safeCall(buildMonthlyChart); safeCall(buildRegionDonut); safeCall(buildSalesperson); safeCall(buildCollectionDonut);
  } else if(pid==='sales') {
- buildWeeklyChart(); buildTargetRate(); buildMonthlyBar();
+   safeCall(buildWeeklyChart); safeCall(buildTargetRate); safeCall(buildMonthlyBar);
  } else if(pid==='products') {
- buildProductChart(); buildProductDonut(); buildProductTable();
+   safeCall(buildProductChart); safeCall(buildProductDonut); safeCall(buildProductTable);
  } else if(pid==='customers') {
- buildCustomerChart(); buildCustStatus(); buildCustRegion(); buildRevVsExpected(); buildCustomerTable(); buildFreqChart(); buildFreqRevenueChart(); buildFreqTable(); buildOutstandingTable();
+   safeCall(buildCustomerChart); safeCall(buildCustStatus); safeCall(buildCustRegion);
+   safeCall(buildRevVsExpected); safeCall(buildCustomerTable);
+   safeCall(buildFreqChart); safeCall(buildFreqRevenueChart);
+   safeCall(buildFreqTable); safeCall(buildOutstandingTable);
  } else if(pid==='payments') {
- buildPayMode(); buildCollectionBar(); buildSalesRepChart();
+   safeCall(buildPayMode); safeCall(buildCollectionBar); safeCall(buildSalesRepChart);
  } else if(pid==='delivery') {
- buildZoneChart(); buildDelivTypeChart(); buildDeliveryTable();
+   safeCall(buildZoneChart); safeCall(buildDelivTypeChart); safeCall(buildDeliveryTable);
  }
 }
 
 // Reinit on nav click
 document.querySelectorAll('.nav-item').forEach(item=>{
- item.addEventListener('click',()=>{ setTimeout(()=>initPage(item.dataset.page),50); });
+ item.addEventListener('click',()=>{ currentPage = item.dataset.page; setTimeout(()=>initPage(item.dataset.page),50); });
 });
 
 // Initial load
-window.addEventListener('load',()=>{ initPage('overview'); animateCounters(); });
+window.addEventListener('load', async () => {
+  initPage('overview');
+  const ok = await loadData();
+  if (ok) {
+    updateScorecards();
+    animateCounters();
+    initPage('overview');
+    // Auto-refresh every 5 minutes
+    setInterval(async () => {
+      const refreshed = await loadData();
+      if (refreshed) { updateScorecards(); initPage(currentPage); animateCounters(); }
+    }, 300000);
+  }
+});
 </script>
 </body>
 </html>
