@@ -1,346 +1,254 @@
 // ============================================================
-//  SALES LEDGER → DASHBOARD  |  Google Apps Script
-//  Paste this entire file into Extensions → Apps Script,
-//  then Deploy → New deployment → Web App
-//  (Execute as: Me | Who has access: Anyone)
+//  SALES ANALYSIS DASHBOARD - Google Apps Script Web App
+//  Paste this into: Google Sheets > Extensions > Apps Script
+//  Then: Deploy > New Deployment > Web App > Anyone > Deploy
 // ============================================================
-
-// ⬇ Paste the original sheet's ID here (from the URL between /d/ and /edit)
-const ORIGINAL_SHEET_ID = '1kDStST-tcRZqB8OXfjtuoNqcTtYVv6W5ew0w0eZaPsI';
 
 function doGet(e) {
   try {
-    const ss = SpreadsheetApp.openById(ORIGINAL_SHEET_ID);
-
-    // Find sheets by name (case-insensitive fallback)
-    function getSheet(name) {
-      let sh = ss.getSheetByName(name);
-      if (!sh) {
-        // Try case-insensitive match
-        const all = ss.getSheets();
-        sh = all.find(s => s.getName().toLowerCase() === name.toLowerCase()) || null;
-      }
-      if (!sh) throw new Error('Sheet not found: "' + name + '". Available sheets: ' + ss.getSheets().map(s => s.getName()).join(', '));
-      return sh;
-    }
-
-    const salesSheet   = getSheet('A-Sales Orders');
-    const invoiceSheet = getSheet('B-Invoices');
-    const custSheet    = getSheet('Customers');
-    const weeklySheet  = getSheet('Weekly Sales & Targets');
-    const delivSheet   = getSheet('Delivery Time Tracker');
-
-    const salesData   = salesSheet.getDataRange().getValues();
-    const invoiceData = invoiceSheet.getDataRange().getValues();
-    const custData    = custSheet.getDataRange().getValues();
-    const weeklyData  = weeklySheet.getDataRange().getValues();
-    const delivData   = delivSheet.getDataRange().getValues();
-
-    // ── Column indexes (0-based, row 0 = header) ──────────────
-    // A-Sales Orders:  [1]OrderDate [3]Status [4]Channel [5]Region
-    //   [7]CustomerName [8]ItemName [12]WarehouseName [17]InvoiceTotal
-    //   [18]SalesPerson [21]WeekNum
-    // B-Invoices:      [5]Total [6]Payment [7]Balance [10]PaymentMode
-    //   [2]CustomerName
-    // Customers:       [2]CustomerName [3]SalesZone [4]Region [5]Status
-    //   [6]Purchases [7]RevenueYTD [8]ExpectedRevenue
-    // Weekly S&T:      [0]Date [1]WeekNum [2]Orders [4]ValueGHS
-    //   [6]AOV [7]WeeklyTargets
-    // Delivery Tracker:[0]CustomerName [1]SalesZone [2]DropSite
-    //   [6]TotalTime [9]Status
-
-    const MONTHS = ['January','February','March','April','May','June',
-                    'July','August','September','October','November','December'];
-
-    // ── Helpers ───────────────────────────────────────────────
-    function toDate(v) {
-      if (v instanceof Date) return v;
-      if (typeof v === 'number' && v > 20000) {
-        // Excel serial date → JS Date (days since 1900-01-00, accounting for Excel's leap year bug)
-        return new Date((v - 25569) * 86400 * 1000);
-      }
-      const d = new Date(v);
-      return isNaN(d.getTime()) ? null : d;
-    }
-    function sortDesc(obj) {
-      return Object.entries(obj).sort((a, b) => b[1] - a[1]);
-    }
-    function round(v) { return Math.round(parseFloat(v) || 0); }
-
-    // ── 1. MONTHLY revenue & targets ─────────────────────────
-    const monthRev = {}, monthTgt = {};
-    let totalOrders = 0, deliveredOrders = 0;
-
-    for (let i = 1; i < salesData.length; i++) {
-      const r = salesData[i];
-      if (!r[7] || !r[17]) continue;
-      const d = toDate(r[1]);
-      if (!d) continue;
-      const m = MONTHS[d.getMonth()];
-      monthRev[m] = (monthRev[m] || 0) + (parseFloat(r[17]) || 0);
-      totalOrders++;
-      if ((r[3] || '').toString().trim() === 'Delivered') deliveredOrders++;
-    }
-    for (let i = 1; i < weeklyData.length; i++) {
-      const r = weeklyData[i];
-      if (!r[0]) continue;
-      const d = toDate(r[0]);
-      if (!d) continue;
-      const m = MONTHS[d.getMonth()];
-      monthTgt[m] = (monthTgt[m] || 0) + (parseFloat(r[7]) || 0);
-    }
-    const monthLabels = Object.keys(monthRev).sort((a, b) => MONTHS.indexOf(a) - MONTHS.indexOf(b));
-
-    // ── 2. WEEKLY data ────────────────────────────────────────
-    const wLabels = [], wRev = [], wTgt = [], wAov = [], wOrders = [];
-    for (let i = 1; i < weeklyData.length; i++) {
-      const r = weeklyData[i];
-      if (r[1] === '' || r[1] === null || r[1] === undefined || !r[4] && r[4] !== 0) continue;
-      wLabels.push('W' + r[1]);
-      wRev.push(round(r[4]));
-      wTgt.push(round(r[7]));
-      wAov.push(Math.round((parseFloat(r[6]) || 0) * 10) / 10);
-      wOrders.push(parseInt(r[2]) || 0);
-    }
-
-    // ── 3. REGIONAL revenue ───────────────────────────────────
-    const regionRev = {};
-    for (let i = 1; i < salesData.length; i++) {
-      const r = salesData[i];
-      if (!r[5] || !r[17]) continue;
-      const k = r[5].toString().trim();
-      if (k) regionRev[k] = (regionRev[k] || 0) + (parseFloat(r[17]) || 0);
-    }
-    const sortedRegions = sortDesc(regionRev).slice(0, 10);
-
-    // ── 4. PRODUCT revenue ────────────────────────────────────
-    const prodRev = {};
-    for (let i = 1; i < salesData.length; i++) {
-      const r = salesData[i];
-      if (!r[8] || !r[17]) continue;
-      const k = r[8].toString().trim();
-      if (k) prodRev[k] = (prodRev[k] || 0) + (parseFloat(r[17]) || 0);
-    }
-    const sortedProds = sortDesc(prodRev).slice(0, 10);
-
-    // ── 5. CUSTOMER data ──────────────────────────────────────
-    const custMap = {};
-    for (let i = 1; i < custData.length; i++) {
-      const r = custData[i];
-      if (!r[2]) continue;
-      const name = r[2].toString().trim();
-      if (!name) continue;
-      custMap[name] = {
-        name,
-        zone:      (r[3] || '').toString().trim(),
-        region:    (r[4] || '').toString().trim(),
-        status:    (r[5] || '').toString().trim(),
-        purchases: parseInt(r[6]) || 0,
-        revenue:   parseFloat(r[7]) || 0,
-        expected:  parseFloat(r[8]) || 0
-      };
-    }
-    const custArr = Object.values(custMap).sort((a, b) => b.revenue - a.revenue);
-    const top10   = custArr.slice(0, 10);
-    const active  = custArr.filter(c => c.status === 'Active').length;
-    const inactive = custArr.filter(c => c.status === 'Inactive').length;
-
-    const custRegionRev = {};
-    for (const c of custArr) {
-      const k = c.region || 'Unknown';
-      custRegionRev[k] = (custRegionRev[k] || 0) + c.revenue;
-    }
-    const sortedCustRegion = sortDesc(custRegionRev).slice(0, 10);
-
-    // ── 6. SALESPERSON revenue ────────────────────────────────
-    const spRev = {};
-    for (let i = 1; i < salesData.length; i++) {
-      const r = salesData[i];
-      if (!r[18] || !r[17]) continue;
-      const k = r[18].toString().trim();
-      if (k) spRev[k] = (spRev[k] || 0) + (parseFloat(r[17]) || 0);
-    }
-    const sortedSP = sortDesc(spRev);
-
-    // ── 7. INVOICE totals & outstanding ──────────────────────
-    let totalInvoiced = 0, totalCollected = 0, totalOutstanding = 0;
-    const outMap = {};
-    const payModes = {};
-    for (let i = 1; i < invoiceData.length; i++) {
-      const r = invoiceData[i];
-      if (!r[5]) continue;
-      totalInvoiced    += parseFloat(r[5]) || 0;
-      totalCollected   += parseFloat(r[6]) || 0;
-      const bal = parseFloat(r[7]) || 0;
-      totalOutstanding += bal;
-      if (bal > 0 && r[2]) {
-        const name = r[2].toString().trim();
-        if (!outMap[name]) outMap[name] = { name, invoice: 0, collected: 0, outstanding: 0 };
-        outMap[name].invoice    += parseFloat(r[5]) || 0;
-        outMap[name].collected  += parseFloat(r[6]) || 0;
-        outMap[name].outstanding += bal;
-      }
-      if (r[10]) {
-        const mode = r[10].toString().trim();
-        if (mode) payModes[mode] = (payModes[mode] || 0) + 1;
-      }
-    }
-    const sortedPay = sortDesc(payModes);
-    const totalPayTxns = sortedPay.reduce((s, p) => s + p[1], 0);
-    const outstandingTable = Object.values(outMap)
-      .sort((a, b) => b.outstanding - a.outstanding)
-      .slice(0, 30)
-      .map(o => ({ ...o,
-        invoice:     round(o.invoice),
-        collected:   round(o.collected),
-        outstanding: round(o.outstanding),
-        rate: o.invoice > 0 ? Math.round((o.collected / o.invoice) * 1000) / 10 : 0
-      }));
-
-    // ── 8. DELIVERY data ──────────────────────────────────────
-    const delivZone = {}, delivType = { Farmer: 0, Agrovet: 0 };
-    for (let i = 1; i < salesData.length; i++) {
-      const r = salesData[i];
-      const wh = (r[12] || '').toString().trim();
-      if (wh) delivZone[wh] = (delivZone[wh] || 0) + 1;
-      const ch = (r[4] || '').toString().trim();
-      if (ch === 'Farmer') delivType.Farmer++;
-      else if (ch === 'Agrovet') delivType.Agrovet++;
-    }
-    const sortedDelivZone = sortDesc(delivZone).slice(0, 8);
-
-    const delivTable = [];
-    for (let i = 1; i < delivData.length && delivTable.length < 30; i++) {
-      const r = delivData[i];
-      if (!r[0]) continue;
-      delivTable.push({
-        customer: r[0].toString().trim(),
-        zone:     (r[1] || '').toString().trim(),
-        drop:     (r[2] || '').toString().trim(),
-        time:     (r[6] || '').toString().trim(),
-        type:     (r[9] || '').toString().trim()
-      });
-    }
-
-    // ── 9. ORDER FREQUENCY table ──────────────────────────────
-    const orderCount = {}, lastOrderDate = {};
-    for (let i = 1; i < salesData.length; i++) {
-      const r = salesData[i];
-      if (!r[7]) continue;
-      const name = r[7].toString().trim();
-      orderCount[name] = (orderCount[name] || 0) + 1;
-      const d = toDate(r[1]);
-      if (d && (!lastOrderDate[name] || d > lastOrderDate[name])) lastOrderDate[name] = d;
-    }
-    const freqTable = Object.entries(orderCount)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 25)
-      .map(([name, orders]) => {
-        const c = custMap[name] || {};
-        const revenue = round(c.revenue || 0);
-        const lastD   = lastOrderDate[name];
-        const last    = lastD
-          ? lastD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-          : '';
-        return { name, orders, revenue, aov: orders > 0 ? Math.round(revenue / orders) : 0, last };
-      });
-
-    // ── 10. CUSTOMER table ────────────────────────────────────
-    const custTable = custArr.slice(0, 25).map(c => ({
-      name:      c.name,
-      region:    c.region,
-      status:    c.status,
-      purchases: c.purchases,
-      revenue:   round(c.revenue),
-      expected:  round(c.expected)
-    }));
-
-    // ── 11. SCORECARDS ────────────────────────────────────────
-    const collRate  = totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 1000) / 10 : 0;
-    const outRate   = 100 - collRate;
-    const aov       = totalOrders > 0 ? Math.round(totalInvoiced / totalOrders * 100) / 100 : 0;
-    const fulfRate  = totalOrders > 0 ? Math.round((deliveredOrders / totalOrders) * 100) : 0;
-    const topCust   = custArr[0] || null;
-    const topPay    = sortedPay[0] || null;
-    const topPayShare = topPay && totalPayTxns > 0
-      ? Math.round((topPay[1] / totalPayTxns) * 1000) / 10 : 0;
-    const prod1 = sortedProds[0] || null;
-    const prod2 = sortedProds[1] || null;
-    const prod3 = sortedProds[2] || null;
-
-    // ── Build response ────────────────────────────────────────
-    const result = {
-      scorecards: {
-        totalRevenue:   round(totalInvoiced),
-        collected:      round(totalCollected),
-        outstanding:    round(totalOutstanding),
-        collRate,
-        outRate,
-        totalOrders,
-        deliveredOrders,
-        aov:            Math.round(aov * 100) / 100,
-        activeCust:     active,
-        totalCust:      active + inactive,
-        fulfRate,
-        topCust:        topCust ? { name: topCust.name, revenue: round(topCust.revenue) } : null,
-        topPayMode:     topPay  ? { name: topPay[0], count: topPay[1], share: topPayShare } : null,
-        prod1: prod1 ? { name: prod1[0], revenue: round(prod1[1]) } : null,
-        prod2: prod2 ? { name: prod2[0], revenue: round(prod2[1]) } : null,
-        prod3: prod3 ? { name: prod3[0], revenue: round(prod3[1]) } : null
-      },
-      monthly: {
-        labels:  monthLabels,
-        revenue: monthLabels.map(m => round(monthRev[m] || 0)),
-        targets: monthLabels.map(m => round(monthTgt[m] || 0))
-      },
-      weekly:  { labels: wLabels, revenue: wRev, targets: wTgt, aov: wAov, orders: wOrders },
-      regions: { labels: sortedRegions.map(r => r[0]), values: sortedRegions.map(r => round(r[1])) },
-      products:{ labels: sortedProds.map(p => p[0]),   values: sortedProds.map(p => round(p[1]))   },
-      customers: {
-        labels:    top10.map(c => c.name),
-        revenue:   top10.map(c => round(c.revenue)),
-        expected:  top10.map(c => round(c.expected)),
-        salesZone: top10.map(c => c.zone)
-      },
-      salesperson: { labels: sortedSP.map(s => s[0]), revenue: sortedSP.map(s => round(s[1])) },
-      paymentMode: { labels: sortedPay.map(p => p[0]), values: sortedPay.map(p => p[1]) },
-      customerStatus: { labels: ['Active', 'Inactive'], values: [active, inactive] },
-      custRegion: {
-        labels: sortedCustRegion.map(r => r[0]),
-        values: sortedCustRegion.map(r => round(r[1]))
-      },
-      delivZone: {
-        labels: sortedDelivZone.map(d => d[0]),
-        values: sortedDelivZone.map(d => d[1])
-      },
-      delivType:       { labels: ['Farmer', 'Agrovet'], values: [delivType.Farmer, delivType.Agrovet] },
-      freqTable,
-      outstandingTable,
-      custTable,
-      delivTable
-    };
-
-    const jsonStr = JSON.stringify(result);
-    const cb = e && e.parameter && e.parameter.callback;
-    if (cb) {
-      return ContentService
-        .createTextOutput(cb + '(' + jsonStr + ')')
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
+    var ss = SpreadsheetApp.openById('1kDStST-tcRZqB8OXfjtuoNqcTtYVv6W5ew0w0eZaPsI');
+    var data = computeAllData(ss);
     return ContentService
-      .createTextOutput(jsonStr)
+      .createTextOutput(JSON.stringify(data))
       .setMimeType(ContentService.MimeType.JSON);
-
-  } catch (err) {
-    const errJson = JSON.stringify({ error: err.toString(), stack: err.stack });
-    const cb = e && e.parameter && e.parameter.callback;
-    if (cb) {
-      return ContentService
-        .createTextOutput(cb + '(' + errJson + ')')
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
+  } catch(err) {
     return ContentService
-      .createTextOutput(errJson)
+      .createTextOutput(JSON.stringify({ error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function getSheetData(ss, name) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) return { headers: [], rows: [] };
+  var v = sheet.getDataRange().getValues();
+  if (v.length < 2) return { headers: [], rows: [] };
+  var headers = v[0].map(function(h){ return String(h).trim().toLowerCase(); });
+  var rows = v.slice(1).filter(function(r){ return r.some(function(c){ return c !== '' && c !== null; }); });
+  return { headers: headers, rows: rows };
+}
+
+function ci(headers, kw) {
+  for (var i=0;i<headers.length;i++) if (headers[i].indexOf(kw.toLowerCase())!==-1) return i;
+  return -1;
+}
+
+function toNum(v) { var n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
+
+function gSum(rows,ki,vi) {
+  var m={};
+  rows.forEach(function(r){
+    var k=String(r[ki]||'').trim();
+    if(k) m[k]=(m[k]||0)+toNum(r[vi]);
+  });
+  return m;
+}
+
+function gCount(rows,ki) {
+  var m={};
+  rows.forEach(function(r){
+    var k=String(r[ki]||'').trim();
+    if(k) m[k]=(m[k]||0)+1;
+  });
+  return m;
+}
+
+function sorted(map,top) {
+  var a=Object.keys(map).map(function(k){return[k,map[k]];});
+  a.sort(function(a,b){return b[1]-a[1];});
+  return top?a.slice(0,top):a;
+}
+
+function getM(d) {
+  if(!d) return -1;
+  var dt=new Date(d);
+  return isNaN(dt.getTime())?-1:dt.getMonth();
+}
+
+function computeAllData(ss) {
+  var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  var orders   = getSheetData(ss,'A-Sales Orders');
+  var invoices = getSheetData(ss,'B-Invoices');
+  var weekly   = getSheetData(ss,'Weekly Sales & Targets');
+  var cust_s   = getSheetData(ss,'Customers');
+  var deliv    = getSheetData(ss,'Delivery Time Tracker');
+
+  // INVOICES
+  var iCust=ci(invoices.headers,'customer name');
+  var iTotal=ci(invoices.headers,'total');
+  var iPay=ci(invoices.headers,'payment');
+  var iBal=ci(invoices.headers,'balance');
+  var iSales=ci(invoices.headers,'sales person');
+  var iMode=ci(invoices.headers,'payment mode');
+
+  var totRev=0,totCol=0,totOut=0;
+  var cRevM={},cPayM={},cBalM={},repM={},modeM={};
+
+  invoices.rows.forEach(function(r){
+    totRev+=toNum(r[iTotal]);
+    totCol+=toNum(r[iPay]);
+    totOut+=toNum(r[iBal]);
+    var c=String(r[iCust]||'').trim();
+    if(c){cRevM[c]=(cRevM[c]||0)+toNum(r[iTotal]);cPayM[c]=(cPayM[c]||0)+toNum(r[iPay]);cBalM[c]=(cBalM[c]||0)+toNum(r[iBal]);}
+    var rp=String(r[iSales]||'').trim();
+    if(rp) repM[rp]=(repM[rp]||0)+toNum(r[iTotal]);
+    var md=String(r[iMode]||'').trim();
+    if(md) modeM[md]=(modeM[md]||0)+1;
+  });
+
+  // SALES ORDERS
+  var oID=ci(orders.headers,'sales order id');
+  var oDate=ci(orders.headers,'order date');
+  var oReg=ci(orders.headers,'region');
+  var oCust=ci(orders.headers,'customer name');
+  var oItem=ci(orders.headers,'item name');
+  var oSub=ci(orders.headers,'subtotal');
+
+  var uIDs={},monM={},regM={},prodM={},coM={},crM={};
+
+  orders.rows.forEach(function(r){
+    var id=r[oID]; if(!id) return;
+    uIDs[id]=1;
+    var m=getM(r[oDate]); if(m>=0) monM[m]=(monM[m]||0)+toNum(r[oSub]);
+    var rg=String(r[oReg]||'').trim(); if(rg) regM[rg]=(regM[rg]||0)+toNum(r[oSub]);
+    var it=String(r[oItem]||'').trim(); if(it) prodM[it]=(prodM[it]||0)+toNum(r[oSub]);
+    var ct=String(r[oCust]||'').trim();
+    if(ct){if(!coM[ct])coM[ct]={};coM[ct][id]=1;crM[ct]=(crM[ct]||0)+toNum(r[oSub]);}
+  });
+
+  var totalOrders=Object.keys(uIDs).length;
+
+  var monNums=Object.keys(monM).map(Number).sort(function(a,b){return a-b;});
+  var monthLabels=monNums.map(function(m){return MN[m];});
+  var monthRevenue=monNums.map(function(m){return Math.round(monM[m]);});
+
+  var mergedReg={};
+  Object.keys(regM).forEach(function(k){var kk=k.trim();mergedReg[kk]=(mergedReg[kk]||0)+regM[k];});
+  var regS=sorted(mergedReg,10);
+
+  var prodAllS=sorted(prodM);
+  var prodS=prodAllS.slice(0,10);
+
+  var freqArr=Object.keys(coM).map(function(n){
+    var cnt=Object.keys(coM[n]).length;
+    var rv=crM[n]||0;
+    return{name:n,orders:cnt,revenue:Math.round(rv),aov:Math.round(rv/cnt)};
+  }).sort(function(a,b){return b.orders-a.orders;}).slice(0,20);
+
+  // WEEKLY
+  var wN=ci(weekly.headers,'week number');
+  var wV=ci(weekly.headers,'value ghs');
+  var wT=ci(weekly.headers,'weekly targets');
+  var wA=ci(weekly.headers,'aov');
+  var wO=ci(weekly.headers,'orders');
+
+  var vW=weekly.rows.filter(function(r){var n=toNum(r[wN]);var v=toNum(r[wV]);return n>0&&n<100&&v>0;})
+    .sort(function(a,b){return toNum(a[wN])-toNum(b[wN]);});
+
+  // CUSTOMERS
+  var cN=ci(cust_s.headers,'customer name');
+  var cR=ci(cust_s.headers,'region');
+  var cSt=ci(cust_s.headers,'status');
+  var cRY=ci(cust_s.headers,'revenue ytd');
+  var cER=ci(cust_s.headers,'expected revenue');
+  var cP=ci(cust_s.headers,'number of purchases');
+
+  var vC=cust_s.rows.filter(function(r){return r[cN]&&r[cN]!=='';});
+  var actC=0,inactC=0,crRM={},expM={};
+
+  vC.forEach(function(r){
+    var st=String(r[cSt]||'').toLowerCase();
+    if(st.indexOf('active')!==-1&&st.indexOf('not')===-1) actC++; else inactC++;
+    var rg=String(r[cR]||'').trim();
+    if(rg) crRM[rg]=(crRM[rg]||0)+toNum(r[cRY]);
+    expM[String(r[cN]).trim()]=toNum(r[cER]);
+  });
+
+  var cRS=sorted(cRevM,10);
+  var custLabels=cRS.map(function(e){return e[0];});
+  var custRev=cRS.map(function(e){return Math.round(e[1]);});
+  var custExp=custLabels.map(function(n){return Math.round(expM[n]||0);});
+
+  var outArr=sorted(cBalM).filter(function(e){return e[1]>0;}).map(function(e){
+    var inv=cRevM[e[0]]||0; var col=cPayM[e[0]]||0;
+    return{name:e[0],invoice:Math.round(inv),collected:Math.round(col),outstanding:Math.round(e[1]),rate:inv>0?Math.round(col/inv*1000)/10:0};
+  });
+
+  var custTableArr=cRS.map(function(e){
+    var row=null;
+    for(var i=0;i<vC.length;i++){if(String(vC[i][cN]).trim()===e[0]){row=vC[i];break;}}
+    return{name:e[0],region:row?String(row[cR]||''):'',status:row?String(row[cSt]||''):'',purchases:row?Math.round(toNum(row[cP])):0,revenue:Math.round(e[1]),expected:Math.round(expM[e[0]]||0)};
+  });
+
+  // DELIVERY
+  var dCu=ci(deliv.headers,'customer name');
+  var dZo=ci(deliv.headers,'sales zone');
+  var dDr=ci(deliv.headers,'drop site');
+  var dTi=ci(deliv.headers,'total time');
+  var dTy=ci(deliv.headers,'status');
+
+  var vD=deliv.rows.filter(function(r){return r[dCu]&&r[dCu]!=='';});
+  var zM=gCount(vD,dZo);
+  var tyM=gCount(vD,dTy);
+  var zS=sorted(zM); var tyS=sorted(tyM);
+
+  var dTable=vD.slice(0,30).map(function(r){
+    return{customer:String(r[dCu]||''),zone:String(r[dZo]||''),drop:String(r[dDr]||''),time:String(r[dTi]||''),type:String(r[dTy]||'')};
+  });
+
+  // COMPUTED SCORECARD FIELDS
+  var collRate=totRev>0?Math.round(totCol/totRev*1000)/10:0;
+  var outRate=Math.round((100-collRate)*10)/10;
+  var aov=totalOrders>0?Math.round(totRev/totalOrders*100)/100:0;
+  var repS=sorted(repM);
+
+  // Top customer by revenue
+  var custRevSorted=sorted(cRevM);
+  var topCust=custRevSorted.length>0?{name:custRevSorted[0][0],revenue:Math.round(custRevSorted[0][1])}:null;
+
+  // Top 3 products
+  function makeProd(i){return prodAllS.length>i?{name:prodAllS[i][0],revenue:Math.round(prodAllS[i][1])}:null;}
+
+  // Top payment mode
+  var modeTotl=Object.keys(modeM).reduce(function(a,k){return a+modeM[k];},0);
+  var modeTop=sorted(modeM);
+  var topPayMode=modeTop.length>0?{name:modeTop[0][0],count:modeTop[0][1],share:modeTotl>0?Math.round(modeTop[0][1]/modeTotl*1000)/10:0}:null;
+
+  return {
+    lastUpdated: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd MMM yyyy, HH:mm"),
+    scorecards:{
+      totalRevenue:  Math.round(totRev*100)/100,
+      collected:     Math.round(totCol*100)/100,
+      outstanding:   Math.round(totOut*100)/100,
+      collRate:      collRate,
+      outRate:       outRate,
+      totalOrders:   totalOrders,
+      deliveredOrders: totalOrders,
+      fulfRate:      100,
+      aov:           aov,
+      activeCust:    actC,
+      totalCust:     vC.length,
+      topCust:       topCust,
+      prod1:         makeProd(0),
+      prod2:         makeProd(1),
+      prod3:         makeProd(2),
+      topPayMode:    topPayMode
+    },
+    monthly:{labels:monthLabels,revenue:monthRevenue,targets:monthLabels.map(function(){return 0;})},
+    weekly:{labels:vW.map(function(r){return 'W'+Math.round(toNum(r[wN]));}),revenue:vW.map(function(r){return Math.round(toNum(r[wV]));}),targets:vW.map(function(r){return Math.round(toNum(r[wT]));}),aov:vW.map(function(r){return Math.round(toNum(r[wA]));}),orders:vW.map(function(r){return Math.round(toNum(r[wO]));})},
+    regions:{labels:regS.map(function(e){return e[0];}),values:regS.map(function(e){return Math.round(e[1]);})},
+    products:{labels:prodS.map(function(e){return e[0];}),values:prodS.map(function(e){return Math.round(e[1]);})},
+    customers:{labels:custLabels,revenue:custRev,expected:custExp},
+    salesperson:{labels:repS.map(function(e){return e[0];}),revenue:repS.map(function(e){return Math.round(e[1]);})},
+    paymentMode:{labels:Object.keys(modeM),values:Object.values(modeM)},
+    customerStatus:{labels:['Active','Inactive'],values:[actC,inactC]},
+    custRegion:{labels:sorted(crRM,10).map(function(e){return e[0];}),values:sorted(crRM,10).map(function(e){return Math.round(e[1]);})},
+    delivZone:{labels:zS.map(function(e){return e[0];}),values:zS.map(function(e){return e[1];})},
+    delivType:{labels:tyS.map(function(e){return e[0];}),values:tyS.map(function(e){return e[1];})},
+    freqTable:freqArr,
+    outstandingTable:outArr,
+    custTable:custTableArr,
+    delivTable:dTable
+  };
 }
