@@ -1397,6 +1397,19 @@ document.querySelectorAll('.nav-item').forEach(item=>{
  item.addEventListener('click',()=>{ currentPage = item.dataset.page; setTimeout(()=>initPage(item.dataset.page),50); });
 });
 
+// Use live data only if it has at least as many months as static data
+function applyLiveData() {
+  const liveMonths  = DATA && DATA.monthly ? DATA.monthly.labels.length : 0;
+  const staticMonths = STATIC_DATA.monthly ? STATIC_DATA.monthly.labels.length : 0;
+  if (liveMonths < staticMonths) {
+    DATA = STATIC_DATA;
+    setStatus('Local data (live source not yet updated)', 'loading');
+    console.warn('Live data has fewer months than static — keeping static data');
+    return false;
+  }
+  return true;
+}
+
 // Initial load
 window.addEventListener('load', async () => {
   DATA = STATIC_DATA;
@@ -1405,12 +1418,13 @@ window.addEventListener('load', async () => {
   animateCounters();
   const ok = await loadData();
   if (ok) {
+    applyLiveData();
     updateScorecards();
     animateCounters();
     initPage(currentPage);
     setInterval(async () => {
       const refreshed = await loadData();
-      if (refreshed) { updateScorecards(); initPage(currentPage); animateCounters(); }
+      if (refreshed) { applyLiveData(); updateScorecards(); initPage(currentPage); animateCounters(); }
     }, 300000);
   }
 });
