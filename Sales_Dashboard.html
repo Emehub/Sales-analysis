@@ -808,7 +808,7 @@ async function loadData() {
 async function retryLoad() {
   clearError();
   const ok = await loadData();
-  if (ok) { updateScorecards(); animateCounters(); initPage(currentPage); }
+  if (ok) { applyLiveData(); updateScorecards(); animateCounters(); initPage(currentPage); }
 }
 
 // ====================== SCORECARD UPDATE ======================
