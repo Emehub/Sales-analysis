@@ -73,6 +73,36 @@ wk['week number'] = pd.to_numeric(wk['week number'], errors='coerce')
 wk['value ghs']   = wk['value ghs'].apply(to_num)
 wk = wk[(wk['week number']>0)&(wk['week number']<100)&(wk['value ghs']>0)].sort_values('week number')
 
+# DISEASE MONTHLY (from Reports sheet — units delivered by vaccine/disease)
+DISEASE_MAP = {
+    'Newcastle (Poultry)': ['Lasota','HB1','Newcavac','Lasota + IB','I2 ND-VAC 500D','Newcavac + EDS + IB'],
+    'Gumboro (Poultry)':   ['Gumboro Intermediate'],
+    'Fowlpox (Poultry)':   ['Fowl Pox'],
+    'AI (Poultry)':        [],
+    'PPR (Goats & Sheep)': [],
+    'CBPP (Cattle)':       [],
+}
+MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+rep = pd.read_excel(f, sheet_name='Reports')
+rep.columns = [str(c).strip() for c in rep.columns]
+units_df = rep.iloc[0:8].copy()
+units_df = units_df.rename(columns={units_df.columns[0]: 'Product'})
+units_df = units_df[units_df['Product'].notna()].reset_index(drop=True)
+# Identify which month columns exist
+month_cols = [c for c in units_df.columns if any(c.strip().startswith(m) for m in MONTH_ABBR)]
+disease_labels = [m for m in MONTH_ABBR if any(c.strip().startswith(m) for c in month_cols)]
+disease_datasets = []
+for disease, products_list in DISEASE_MAP.items():
+    monthly_units = []
+    for mc in month_cols:
+        total = 0
+        for prod in products_list:
+            row = units_df[units_df['Product'].str.strip() == prod]
+            if not row.empty:
+                total += to_num(row[mc].values[0])
+        monthly_units.append(int(total))
+    disease_datasets.append({'label': disease, 'data': monthly_units})
+
 # DELIVERY
 deliv = pd.read_excel(f, sheet_name='Delivery Time Tracker')
 deliv.columns = [str(c).strip().lower() for c in deliv.columns]
@@ -147,6 +177,7 @@ DATA = {
     'custRegion': {'labels':list(cust_rg_ytd.index), 'values':[round(v) for v in cust_rg_ytd.values]},
     'delivZone': {'labels':list(zone_cnt.index), 'values':[int(v) for v in zone_cnt.values]},
     'delivType': {'labels':list(type_cnt.index), 'values':[int(v) for v in type_cnt.values]},
+    'diseaseMonthly': {'labels': disease_labels, 'datasets': disease_datasets},
     'freqTable': freq_arr,
     'outstandingTable': out_arr,
     'custTable': cust_table,
