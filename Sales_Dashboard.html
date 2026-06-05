@@ -447,7 +447,19 @@
  </div>
  <div class="chart-wrap" style="height:320px"><canvas id="diseaseChart"></canvas></div>
  <div style="margin-top:0.6rem;padding:0.5rem 0.8rem;background:#f5f7fc;border-radius:6px;font-size:0.8rem;color:#6b7280">
- <b style="color:#1e2235">No data recorded yet:</b>&nbsp; AI (Poultry) &nbsp;&middot;&nbsp; PPR (Goats &amp; Sheep) &nbsp;&middot;&nbsp; CBPP (Cattle) — will appear automatically once sales are entered.
+ <b style="color:#1e2235">No data recorded yet:</b>&nbsp; AI (Poultry), PPR (Goats &amp; Sheep), CBPP (Cattle) — will appear automatically once sales are entered.
+ </div>
+ <!-- Disease Monthly Table -->
+ <div class="table-card" style="margin-top:1rem;border-top:none">
+ <div class="table-head">
+ <span class="table-title">Doses Breakdown by Disease</span>
+ </div>
+ <div style="overflow-x:auto">
+ <table>
+ <thead><tr id="diseaseTableHead"></tr></thead>
+ <tbody id="diseaseTableBody"></tbody>
+ </table>
+ </div>
  </div>
  </div>
 
@@ -1155,6 +1167,28 @@ function buildDiseaseChart() {
   }
  });
 }
+function buildDiseaseTable() {
+ if(!DATA || !DATA.diseaseMonthly) return;
+ const head = document.getElementById('diseaseTableHead');
+ const body = document.getElementById('diseaseTableBody');
+ if(!head || !body) return;
+ const dm = DATA.diseaseMonthly;
+ const hasData = dm.labels.map((_,i)=>dm.datasets.some(ds=>ds.data[i]>0));
+ const cutoff = hasData.lastIndexOf(true) + 1 || dm.labels.length;
+ const activeLabels = dm.labels.slice(0, cutoff);
+ const DISEASE_COLORS = ['#6c63ff','#00d4aa','#ff9f43','#74b9ff','#fd79a8','#e17055'];
+ head.innerHTML = '<th>Disease</th>' + activeLabels.map(m=>`<th>${m}</th>`).join('') + '<th>Total</th>';
+ body.innerHTML = dm.datasets.map((ds,i)=>{
+  const data = ds.data.slice(0, cutoff);
+  const total = data.reduce((a,b)=>a+b,0);
+  const color = DISEASE_COLORS[i % DISEASE_COLORS.length];
+  const cells = data.map(v=>`<td style="text-align:center">${v > 0 ? v.toLocaleString() : '<span style="color:#ccc">—</span>'}</td>`).join('');
+  const badge = total > 0
+   ? `<td style="text-align:center;font-weight:700;color:${color}">${total.toLocaleString()}</td>`
+   : `<td style="text-align:center;color:#ccc">—</td>`;
+  return `<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:6px"></span>${ds.label}</td>${cells}${badge}</tr>`;
+ }).join('');
+}
 function buildProductTable() {
  if(!DATA) return;
  const tbody = document.getElementById('productTableBody');
@@ -1441,7 +1475,7 @@ function initPage(pid) {
  } else if(pid==='sales') {
    safeCall(buildWeeklyChart); safeCall(buildTargetRate); safeCall(buildMonthlyBar);
  } else if(pid==='products') {
-   safeCall(buildProductChart); safeCall(buildProductDonut); safeCall(buildProductTable); safeCall(buildDiseaseChart);
+   safeCall(buildProductChart); safeCall(buildProductDonut); safeCall(buildProductTable); safeCall(buildDiseaseChart); safeCall(buildDiseaseTable);
  } else if(pid==='customers') {
    safeCall(buildCustomerChart); safeCall(buildCustStatus); safeCall(buildCustRegion);
    safeCall(buildRevVsExpected); safeCall(buildCustomerTable);
